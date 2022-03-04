@@ -19,7 +19,9 @@ def scrape_all():
         "news_paragraph": news_paragraph,
         "featured_image": featured_image(browser),
         "facts": mars_facts(),
-        "last_modified": dt.datetime.now()
+        "last_modified": dt.datetime.now(),
+        "hemispheres": scrape_full_image()
+     
     }
 
     # Stop webdriver and return data
@@ -57,7 +59,7 @@ def mars_news(browser):
 
 def featured_image(browser):
     # Visit URL
-    url = 'https://data-class-jpl-space.s3.amazonaws.com/JPL_Space/index.html'
+    url = 'https://spaceimages-mars.com'
     browser.visit(url)
 
     # Find and click the full image button
@@ -77,7 +79,7 @@ def featured_image(browser):
         return None
 
     # Use the base url to create an absolute url
-    img_url = f'https://data-class-jpl-space.s3.amazonaws.com/JPL_Space/{img_url_rel}'
+    img_url = f'https://spaceimages-mars.com/{img_url_rel}'
 
     return img_url
 
@@ -96,6 +98,46 @@ def mars_facts():
 
     # Convert dataframe into HTML format, add bootstrap
     return df.to_html(classes="table table-striped")
+
+def scrape_full_image():
+    
+
+
+    # Set the executable path and initialize Splinter
+    executable_path = {'executable_path': ChromeDriverManager().install()}
+    browser = Browser('chrome', **executable_path, headless=False)
+    # Visit the mars image site
+    base_url = 'https://astrogeology.usgs.gov'
+    #url = 'https://astrogeology.usgs.gov/search/results?q=hemisphere+enhanced&k1=target&v1=Mars'
+    browser.visit(base_url + '/search/results?q=hemisphere+enhanced&k1=target&v1=Mars')
+    
+    hemisphere_image_urls = []
+    
+    html = browser.html
+    news_soup = soup(html, 'html.parser')
+    div = news_soup.find('div', class_ = 'collapsible results')
+    #print(div.prettify())
+    title = [i.text for i in div.find_all('h3') ]
+    base_url = 'https://astrogeology.usgs.gov'
+    url = []
+    for i in div.find_all('a', class_ = 'itemLink product-item'):
+        if i.get('href') not in url:
+            url.append(i.get('href'))
+            url_1 = [base_url + i for i in url]
+    url_2 = []
+    for i in url_1:
+        browser.visit(i)
+        image_html = browser.html
+        image_soup = soup(image_html)
+        url_2.append(image_soup.find('div', class_ = 'downloads').find_all('li')[0].find('a').get('href'))
+    
+    for i in range(len(url_2)):
+        dict1 = {}
+        dict1['img_url'] = url_2[i]
+        dict1['title'] = title[i]
+        hemisphere_image_urls.append(dict1)
+    browser.quit()
+    return hemisphere_image_urls
 
 if __name__ == "__main__":
 
